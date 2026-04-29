@@ -7,6 +7,8 @@ import  { tgs }                   from './tgs.js';
 
 (() => {
 
+  let _pageReadyPromise;
+
   function addWatermarkHandler() {
     document.querySelector('.watermark').onclick = () => {
       chrome.tabs.create({ url: chrome.runtime.getURL('about.html') });
@@ -355,6 +357,7 @@ import  { tgs }                   from './tgs.js';
 
       case 'initTab' : {
         // { action: 'initTab', tab, quickInit, sessionId: gsSession.getSessionId() }
+        await _pageReadyPromise;
         await initTab(request.tab, request.sessionId, request.quickInit);
         sendResponse();
         break;
@@ -405,9 +408,14 @@ import  { tgs }                   from './tgs.js';
     return true;
   }
 
-  gsUtils.documentReadyAndLocalisedAsPromised(window).then(function() {
+  // Register the listener immediately so initTab messages sent during bulk
+  // session restore (1000+ tabs) are not dropped while the page-ready
+  // promise is still pending. The initTab handler awaits _pageReadyPromise
+  // internally before touching the DOM or running init logic.
+  _pageReadyPromise = gsUtils.documentReadyAndLocalisedAsPromised(window);
+  chrome.runtime.onMessage.addListener(messageRequestListener);
+  _pageReadyPromise.then(function() {
     gsUtils.log('suspended', 'documentReadyAndLocalisedAsPromised');
-    chrome.runtime.onMessage.addListener(messageRequestListener);
     // initSettings();
   });
 
