@@ -15,6 +15,16 @@ export const gsTabCheckManager = (function() {
   const DEFAULT_TAB_CHECK_PROCESSING_DELAY = 500;
   const DEFAULT_TAB_CHECK_REQUEUE_DELAY = 3 * 1000;
 
+  // During startup we use a tighter processing loop and more concurrent slots.
+  // Tab checks are async Chrome IPC, not CPU-bound, so logical core count is a
+  // reasonable proxy for how many renderer wake-ups Chrome can pipeline without
+  // contention. Clamped to [DEFAULT_CONCURRENT_TAB_CHECKS, 16].
+  const STARTUP_TAB_CHECK_PROCESSING_DELAY = 0;
+  function getStartupConcurrentTabChecks() {
+    const cores = navigator.hardwareConcurrency ?? 4;
+    return Math.min(Math.max(cores, DEFAULT_CONCURRENT_TAB_CHECKS), 16);
+  }
+
   const QUEUE_ID = 'checkQueue';
   const _defaultTabTitle = chrome.i18n.getMessage('html_suspended_title');
 
@@ -60,13 +70,13 @@ export const gsTabCheckManager = (function() {
   // Suspended tabs that exist or are created before the end of extension
   // initialisation will need to be initialised by this startup script
   async function performInitialisationTabChecks(tabs) {
-    // Temporarily change jobTimeout while we are starting up
+    // Temporarily change queue props while we are starting up
     const initJobTimeout = Math.max(
       tabs.length * 1000,
       DEFAULT_TAB_CHECK_TIMEOUT
     );
-    const initProcessingDelay = DEFAULT_TAB_CHECK_PROCESSING_DELAY;
-    const concurrentExecutors = DEFAULT_CONCURRENT_TAB_CHECKS;
+    const initProcessingDelay = STARTUP_TAB_CHECK_PROCESSING_DELAY;
+    const concurrentExecutors = getStartupConcurrentTabChecks();
     updateQueueProps(initJobTimeout, initProcessingDelay, concurrentExecutors);
 
     const tabCheckPromises = [];
