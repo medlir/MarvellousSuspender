@@ -869,7 +869,7 @@ import  { tgs }                   from './tgs.js';
     chrome.tabGroups.onRemoved.addListener(async (group) => {
       await tgs.handleTabGroupRemoved(group);
     });
-    chrome.windows.onCreated.addListener(async (window) => {
+    chrome.windows.onCreated.addListener((window) => {
       gsUtils.log(window.id, 'background', 'window created.');
       tgs.queueSessionTimer();
     });
