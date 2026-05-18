@@ -698,7 +698,7 @@ import  { tgs }                   from './tgs.js';
         }
       }
     });
-    chrome.windows.onCreated.addListener(async (window) => {
+    chrome.windows.onCreated.addListener((window) => {
       gsUtils.log(window.id, 'background', 'window created.');
       tgs.queueSessionTimer();
     });
