@@ -1587,14 +1587,15 @@ export const tgs = (function() {
   }
 
   //HANDLERS FOR RIGHT-CLICK CONTEXT MENU
-  function buildContextMenu(showContextMenu) {
+  async function buildContextMenu(showContextMenu) {
     /** @type { chrome.contextMenus.CreateProperties['contexts'] } */
     const allContexts = ['page', 'frame', 'editable', 'image', 'video', 'audio']; //'selection',
 
-    if (!showContextMenu) {
-      chrome.contextMenus.removeAll();
-    }
-    else {
+    // Always clear existing items first and wait for it to complete, otherwise
+    // re-creating items races with the removal and throws duplicate id errors.
+    await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
+
+    if (showContextMenu) {
       chrome.contextMenus.create({
         id: 'open_link_in_suspended_tab',
         title: gsUtils.getMessage('js_context_open_link_in_suspended_tab'),

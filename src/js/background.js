@@ -91,9 +91,8 @@ import  { tgs }                   from './tgs.js';
 
     //add context menu items
     if (!chrome.extension.inIncognitoContext) {
-      tgs.buildContextMenu(false);
       const contextMenus = await gsStorage.getOption(gsStorage.ADD_CONTEXT);
-      tgs.buildContextMenu(contextMenus);
+      await tgs.buildContextMenu(contextMenus);
     }
 
     // remove update message after extension has been updated
