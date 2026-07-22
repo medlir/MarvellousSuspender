@@ -25,6 +25,7 @@ export const historyItems = (() => {
     const sessionDelete = createEl('a',     { class: 'groupLink deleteLink',    href: '#', }, chrome.i18n.getMessage('js_history_delete'));
     const windowSuspend = createEl('a',     { class: 'groupLink resuspendLink', href: '#', }, chrome.i18n.getMessage('js_history_resuspend'));
     const windowReload  = createEl('a',     { class: 'groupLink reloadLink',    href: '#', }, chrome.i18n.getMessage('js_history_reload'));
+    const windowRestore = createEl('a',     { class: 'groupLink restoreLink',   href: '#', }, chrome.i18n.getMessage('js_history_restore'));
     const sessionExport = createEl('a',     { class: 'groupLink exportLink',    href: '#', }, chrome.i18n.getMessage('js_history_export'));
     const sessionDIV    = createEl('div',   { class: 'sessionContainer', });
 
@@ -34,6 +35,7 @@ export const historyItems = (() => {
     sessionDIV.appendChild(sessionIcon);
     sessionDIV.appendChild(sessionTitle);
     if (showLinks && sessionType !== 'current') {
+      sessionDIV.appendChild(windowRestore);
       sessionDIV.appendChild(windowSuspend);
       sessionDIV.appendChild(windowReload);
     }
@@ -53,7 +55,7 @@ export const historyItems = (() => {
   }
 
   function createWindowHtml(index, showLinks) {
-    let groupHeading, windowContainer, groupUnsuspendCurrent, groupUnsuspendNew;
+    let groupHeading, windowContainer, groupUnsuspendCurrent, groupUnsuspendNew, groupRestore;
 
     groupHeading = createEl('div', { class: 'windowContainer', id: 'main-div-' + index });
 
@@ -62,11 +64,13 @@ export const historyItems = (() => {
 
     windowContainer.appendChild(createEl('a', { class: 'groupLink exportLink' + index,  href: '#' }, chrome.i18n.getMessage('js_history_export')));
     windowContainer.appendChild(createEl('a', { class: 'groupLink saveLink' + index,    href: '#' }, chrome.i18n.getMessage('js_history_save')));
+    groupRestore = createEl('a',              { class: 'groupLink restoreLink',        href: '#main-div-' + index }, chrome.i18n.getMessage('js_history_restore'));
     groupUnsuspendCurrent = createEl('a',     { class: 'groupLink resuspendLink ',      href: '#main-div-' + index }, chrome.i18n.getMessage('js_history_resuspend'));
     groupUnsuspendNew = createEl('a',         { class: 'groupLink reloadLink',          href: '#main-div-' + index }, chrome.i18n.getMessage('js_history_reload'));
 
     groupHeading.appendChild(windowContainer);
     if (showLinks) {
+      groupHeading.appendChild(groupRestore);
       groupHeading.appendChild(groupUnsuspendCurrent);
       groupHeading.appendChild(groupUnsuspendNew);
     }

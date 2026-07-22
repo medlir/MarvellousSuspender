@@ -32,8 +32,8 @@ import  { historyUtils }          from './historyUtils.js';
       sessionWindows = session.windows;
     }
 
+    const suspendMode = openTabsAsSuspended === null ? 0 : (openTabsAsSuspended ? 1 : 2);
     for (let sessionWindow of sessionWindows) {
-      const suspendMode = openTabsAsSuspended ? 1 : 2;
       await gsSession.restoreSessionWindow(sessionWindow, null, session.tabGroups, suspendMode);
     }
   }
@@ -157,6 +157,12 @@ import  { historyUtils }          from './historyUtils.js';
       },
     );
     addClickListenerToElement(
+      sessionEl.getElementsByClassName('restoreLink')[0],
+      function() {
+        reloadTabs(session.sessionId, null, null); // async
+      },
+    );
+    addClickListenerToElement(
       sessionEl.getElementsByClassName('resuspendLink')[0],
       function() {
         reloadTabs(session.sessionId, null, true); // async
@@ -187,6 +193,12 @@ import  { historyUtils }          from './historyUtils.js';
     var allowReload = session.sessionId !== (await gsSession.getSessionId());
     var windowEl = historyItems.createWindowHtml(index, allowReload);
 
+    addClickListenerToElement(
+      windowEl.getElementsByClassName('restoreLink')[0],
+      function() {
+        reloadTabs(session.sessionId, window.id, null); // async
+      },
+    );
     addClickListenerToElement(
       windowEl.getElementsByClassName('resuspendLink')[0],
       function() {
