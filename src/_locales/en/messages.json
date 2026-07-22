@@ -913,6 +913,9 @@
   "js_history_reload": {
     "message": "open and load"
   },
+  "js_history_restore": {
+    "message": "open as-is"
+  },
   "js_history_resuspend": {
     "message": "open and suspend"
   },
