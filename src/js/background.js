@@ -301,6 +301,30 @@ import  { tgs }                   from './tgs.js';
       case 'open_session_history':
         await chrome.tabs.create({ url: chrome.runtime.getURL('history.html') });
         break;
+      case 'tab_toggle_suspend':
+        tgs.toggleSuspendStateOfTab(tab);
+        break;
+      case 'tab_toggle_pause':
+        tgs.requestToggleTempWhitelistStateOfTab(tab);
+        break;
+      case 'tab_never_suspend_domain':
+        tgs.whitelistTab(tab, false);
+        break;
+      case 'tab_never_suspend_page':
+        tgs.whitelistTab(tab, true);
+        break;
+      case 'tab_soft_suspend_other_tabs':
+        tgs.suspendAllTabs(false);
+        break;
+      case 'tab_unsuspend_all_in_window':
+        tgs.unsuspendAllTabs();
+        break;
+      case 'tab_soft_suspend_all':
+        tgs.suspendAllTabsInAllWindows(false);
+        break;
+      case 'tab_unsuspend_all':
+        tgs.unsuspendAllTabsInAllWindows();
+        break;
       default:
         break;
     }
@@ -349,6 +373,7 @@ import  { tgs }                   from './tgs.js';
   /** @param { chrome.alarms.Alarm } alarm */
   async function alarmListener(alarm) {
     gsUtils.log('background', 'alarmListener', alarm);
+
     const tabId = parseInt(alarm.name);
     const tab = await gsChrome.tabsGet(tabId);
     if (!tab) {
@@ -365,16 +390,21 @@ import  { tgs }                   from './tgs.js';
       await tgs.handleWindowFocusChanged(windowId);
     });
     chrome.tabs.onActivated.addListener(async (activeInfo) => {
+      gsUtils.log(activeInfo.tabId, 'tab onActivated');
       await tgs.handleTabFocusChanged(activeInfo.tabId, activeInfo.windowId); // async. unhandled promise
     });
     chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
+      gsUtils.log(removedTabId, 'tab onReplaced', addedTabId, removedTabId);
       // await tgs.updateTabIdReferences(addedTabId, removedTabId);
       tgs.queueSessionTimer();
       await tgs.removeTabIdReferences(removedTabId);
-      // @TODO: Do we need to do anything here?  Seems like onCreated doesn't
+
+      // This event is rather unique to the Chrome Tab Group Bug, so queue up everything
+      gsSession.pushReplacedTab(addedTabId);
+
     });
     chrome.tabs.onCreated.addListener(async (tab) => {
-      gsUtils.log(tab.id, 'tab created. tabUrl: ', tab.url);
+      gsUtils.log(tab.id, 'tab onCreated', tab.url);
       tgs.queueSessionTimer();
 
       // It's unusual for a suspended tab to be created. Usually they are updated
@@ -411,7 +441,17 @@ import  { tgs }                   from './tgs.js';
     };
 
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+      gsUtils.log(tabId, 'tab onUpdated', changeInfo, tab.url);
       if (!changeInfo) return;
+
+      // Edge's version of the Tab Group Bug bug is more complicated.
+      // Here, we need to save the suspended URL and the tabId for grouped tabs
+      // Originally we limit tab replacement to only suspended tabs, but Edge is braking some live tabs too
+      // if (changeInfo.title == 'New Tab' && tab.groupId && gsUtils.isSuspendedTab(tab)) {
+      if (changeInfo.title?.toLowerCase() == 'new tab' && tab.groupId) {
+        // Attempt to queue up any tab moving to "new tab" -- pushReplacedTab will stop queueing after initialization ends
+        gsSession.pushReplacedTab(tabId, tab.url);
+      }
 
       if (await gsStorage.getOption(gsStorage.CLAIM_BY_DEFAULT) && changeInfo.status === 'complete') {
         await claimTab(tabId);

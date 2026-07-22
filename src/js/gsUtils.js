@@ -10,6 +10,8 @@ import  { tgs }                   from './tgs.js';
 
 'use strict';
 
+let _localeMessages = null;
+
 export const gsUtils = {
   STATUS_NORMAL         : 'normal',
   STATUS_LOADING        : 'loading',
@@ -181,7 +183,12 @@ export const gsUtils = {
       return false;
     }
     const url = gsUtils.getTabUrl(tab);
-    // NOTE: suspended urls start with "chrome" (chrome-extension://), so we first check isSuspendedTab above
+    // chrome-extension:// pages (TMS own pages or other extensions) cannot receive
+    // content scripts and must never be suspended — isBrowserInternalURL misses them
+    // because its regex matches "chrome:" but not "chrome-extension:".
+    if (url?.startsWith(`${chrome.runtime.getURL('').split(':')[0]}://`)) {
+      return true;
+    }
     return ( this.isBrowserInternalURL(url) || gsUtils.isBlockedFileTab(tab) );
   },
 
@@ -416,9 +423,25 @@ export const gsUtils = {
     });
   },
 
+  async loadLocaleMessages(locale) {
+    if (!locale || locale === 'auto') {
+      _localeMessages = null;
+      return;
+    }
+    try {
+      const url = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
+      const response = await fetch(url);
+      _localeMessages = response.ok ? await response.json() : null;
+    } catch (e) {
+      _localeMessages = null;
+    }
+  },
+
   localiseHtml(parentEl) {
     const replaceTagFunc = function(match, p1) {
-      return p1 ? chrome.i18n.getMessage(p1) : '';
+      if (!p1) return '';
+      if (_localeMessages && _localeMessages[p1]) return _localeMessages[p1].message || '';
+      return chrome.i18n.getMessage(p1) || '';
     };
     for (const el of parentEl.getElementsByTagName('*')) {
       if (el.hasAttribute('data-i18n')) {
@@ -452,7 +475,12 @@ export const gsUtils = {
 
   async documentReadyAndLocalisedAsPromised(win) {
     await gsUtils.documentReadyAsPromised(win.document);
+    const locale = await gsStorage.getOption(gsStorage.LANGUAGE);
+    await gsUtils.loadLocaleMessages(locale);
     gsUtils.localiseHtml(win.document);
+
+    const vEl = win.document.getElementById('headerVersion');
+    if (vEl) vEl.textContent = 'v' + chrome.runtime.getManifest().version;
 
     if (win.document?.body) {
       const theme = await gsStorage.getOption(gsStorage.THEME);
